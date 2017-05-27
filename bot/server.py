@@ -13,6 +13,24 @@ class Server:
         thread = Thread(target = self.startListen, args = ())
         thread.start()
 
+    def getKernalInf(self,idchat):
+        if [x[0] for x in self.busyKeys if x[2] == idchat] != []:
+            [sockClient] = [x[0] for x in self.busyKeys if x[2] == idchat]
+            sockClient.send(b'kernalinfo')
+            data = sockClient.recv(10240)
+            return data
+        else:
+            return b'error'
+
+    def getList(self,idchat):
+        if [x[0] for x in self.busyKeys if x[2] == idchat] != []:
+            [sockClient] = [x[0] for x in self.busyKeys if x[2] == idchat]
+            sockClient.send(b'list')
+            data = sockClient.recv(10240)
+            return data
+        else:
+            return b'error'
+
     # ожидание клиентов
     def startListen(self):
         while 1:
@@ -22,39 +40,44 @@ class Server:
 
     # работа с "облаком"
     def workWithHome(self, client, addr):
-        while True:
-            data = client.recv(10240)
-            print(b'From home: ' + data)
-            if not data:
-                return
-            elif data == b'hello':
-                # проверка на то, что сокет имеет ключ
-                if [ client in (x[0] for x in self.freeKeys) ] == [ False ]:
-                    youKey = self.genKey()
-                    client.send(b'youkey ' + youKey)
-                    self.freeKeys.append([client, youKey])
-                    print(self.freeKeys)
+        data = client.recv(10240)
+        print(b'From home: ' + data)
+        if not data:
+            return
+        elif data == b'hello':
+            print('Пользователь запросил ключ')
+            # проверка на то, что сокет не имеет ключ
+            if [ client in (x[0] for x in self.freeKeys) ] == [ False ]:
+                youKey = self.genKey()
+                print('Пользователем получен ключ', youKey)
+                client.send(b'youkey ' + youKey)
+                self.freeKeys.append([client, youKey])
+                print(self.freeKeys)
+        else:
+            # если пришел ключ
+            if [x for x in self.busyKeys if x[1] == data] != []:
+                print('Пользователь имеет ключ')
+                [clientList] = [x for x in self.busyKeys if x[1] == data]
+                index = self.busyKeys.index(clientList)
+                del self.busyKeys[index]
+                self.busyKeys.append([client, data, clientList[2]])
+                print(self.busyKeys)
+                client.send(b'successful')
             else:
-                # если пришел ключ
-                if [x for x in self.busyKeys if x[1] == data] == []:
-                    # ключ не найден
-                    youKey = self.genKey()
-                    client.send(b'clear ' + youKey)
-                else:
-                    [clientList] = [x for x in self.busyKeys if x[1] == data]
-                    index = self.busyKeys.index(clientList)
-                    del self.busyKeys[index]
-                    self.busyKeys.append([client, data, clientList[2]])
-                    print(self.busyKeys)
-                    client.send(b'successful')
-                    break
+                # ключ не найден
+                print('Пользователь прибыл без ключа')
+                youKey = self.genKey()
+                client.send(b'clear ' + youKey)
 
     # отправка файла от пользователя
     def getFile(self, nameFile, idChat):
-        [sockClient] = [x[0] for x in self.busyKeys if x[2] == idChat]
-        sockClient.send(b'getf ' + nameFile.encode())
-        data = sockClient.recv(10240)
-        return data
+        if [x[0] for x in self.busyKeys if x[2] == idChat] != []:
+            [sockClient] = [x[0] for x in self.busyKeys if x[2] == idChat]
+            sockClient.send(b'getf ' + nameFile.encode())
+            data = sockClient.recv(10240)
+            return data
+        else:
+            return b'error'
 
     # сохранение ключа доступа
     def saveKey(self, key, idChat):

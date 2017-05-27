@@ -9,9 +9,28 @@ bot = telebot.TeleBot(config.token)
 # команда /start
 @bot.message_handler(commands=["start"])
 def start(message):
-    bot.send_message(message.chat.id, "Может хотети добавить ключ командой \"/key КЛЮЧ_ОТ_ВАШЕГО_HOME\"?")
+    bot.send_message(message.chat.id, "Может хотите добавить ключ командой \"/key КЛЮЧ_ОТ_ВАШЕГО_HOME\"?")
 
-# команда /key
+@bot.message_handler(commands=["help"])
+def help(message):
+    help_str = '''    Данный бот предназначен для вазможности сохранять все ваши личные файлы на "домашнем облаке".
+        Для того чтобы начать работу вам необходимо отправить боту ключ, который выдан установленной на "домашнем облаке" программой.
+        Сделать это можно с помощью команды /key YOUR_KEY.
+        Отправив боту любой файл, он передаст его серверу для сохранения "домашнему облаку" в рабочей папке.
+        Скачать необходимый файл из рабочей папки можно командой /getfile FILE_NAME.'''
+    bot.send_message(message.chat.id,help_str)
+
+@bot.message_handler(commands=["list"])
+def list(message):
+    list_files = serverHome.getList(message.chat.id)
+    bot.send_message(message.chat.id,list_files)
+
+@bot.message_handler(commands=["kinfo"])
+def kinfo(message):
+    k_inf = serverHome.getKernalInf(message.chat.id)
+    bot.send_message(message.chat.id,k_inf)
+
+# команда /key КЛЮЧ
 @bot.message_handler(commands=["key"])
 def key(message):
     [_, key] = message.text.split(" ")
@@ -22,6 +41,7 @@ def key(message):
     else:
         bot.send_message(message.chat.id, "Ключ не принят")
 
+# команда /getfile ИМЯ_ФАЙЛА
 @bot.message_handler(commands=["getfile"])
 def getf(message):
     [_, fileName] = message.text.split(" ")
@@ -46,7 +66,6 @@ def sendfile(message):
     file_info = bot.get_file(message.document.file_id)
     file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(config.token, file_info.file_path))
     # file.content - binary файла
-    print(message.document.file_size)
     serverHome.sendFile(message.chat.id, file.content, message.document.file_name, message.document.file_size)
 
 if __name__ == '__main__':
