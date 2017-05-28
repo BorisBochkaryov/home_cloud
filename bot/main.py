@@ -3,6 +3,7 @@ import config, telebot
 import server
 from telebot import types
 import requests
+import io
 
 bot = telebot.TeleBot(config.token)
 
@@ -13,11 +14,11 @@ def start(message):
 
 @bot.message_handler(commands=["help"])
 def help(message):
-    help_str = '''    Данный бот предназначен для вазможности сохранять все ваши личные файлы на "домашнем облаке".
-        Для того чтобы начать работу вам необходимо отправить боту ключ, который выдан установленной на "домашнем облаке" программой.
-        Сделать это можно с помощью команды /key YOUR_KEY.
-        Отправив боту любой файл, он передаст его серверу для сохранения "домашнему облаку" в рабочей папке.
-        Скачать необходимый файл из рабочей папки можно командой /getfile FILE_NAME.'''
+    help_str = '''Данный бот предназначен для вазможности сохранять все ваши личные файлы на "домашнем облаке".
+    Для того чтобы начать работу вам необходимо отправить боту ключ, который выдан установленной на "домашнем облаке" программой.
+    Сделать это можно с помощью команды /key YOUR_KEY.
+    Отправив боту любой файл, он передаст его серверу для сохранения "домашнему облаку" в рабочей папке.
+    Скачать необходимый файл из рабочей папки можно командой /getfile FILE_NAME.'''
     bot.send_message(message.chat.id,help_str)
 
 @bot.message_handler(commands=["list"])
@@ -46,7 +47,12 @@ def key(message):
 def getf(message):
     [_, fileName] = message.text.split(" ")
     binFile = serverHome.getFile(fileName, message.chat.id)
-    bot.send_document(message.chat.id, binFile, caption=fileName)
+    document = io.BytesIO(binFile)
+    document.name = fileName
+    files = {'document' : document}
+    data = {'chat_id' : message.chat.id}
+    r = requests.post('https://api.telegram.org/bot{0}/sendDocument'.format(config.token), files = files, data = data)
+    print('Отправка файла:', r.status_code, r.reason, r.content)
 
 # обычный текст
 @bot.message_handler(content_types=["text"])
@@ -55,10 +61,11 @@ def sendmessage(message):
         print("OK   ",message.text)
         bot.send_message(message.chat.id, "Необходимо отправить ключ, который зарегистрирован на стороне Home")
     else:
+        bot.send_message(message.chat.id, "Для получения справки необходимо отправить команду /help")
         # клавиатура с меню
-        keys = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-        keys.add("Добавить ключ")
-        bot.send_message(message.chat.id, "Ваш выбор?", reply_markup=keys)
+        # keys = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
+        # keys.add("Добавить ключ")
+        # bot.send_message(message.chat.id, "Ваш выбор?", reply_markup=keys)
 
 # прием файлов
 @bot.message_handler(content_types=["document"])
