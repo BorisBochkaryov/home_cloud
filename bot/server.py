@@ -74,7 +74,7 @@ class Server:
         if [x[0] for x in self.busyKeys if x[2] == idChat] != []:
             [sockClient] = [x[0] for x in self.busyKeys if x[2] == idChat]
             sockClient.send(b'getf ' + nameFile.encode())
-            data = sockClient.recv(10240)
+            data = sockClient.recv(102400) # 100 КБ
             return data
         else:
             return b'error'
@@ -99,13 +99,13 @@ class Server:
 
     # отправка файла в Home
     def sendFile(self, idChat, file, nameFile, sizeFile):
-        [sockClient] = [x[0] for x in self.busyKeys if x[2] == idChat]
-        sockClient.send(b'sendf ' + str.encode(nameFile))
-        time.sleep(0.1)
-        sockClient.send(str.encode(str(sizeFile)))
-        time.sleep(0.1)
-        sockClient.send(file)
-
+        if [x[0] for x in self.busyKeys if x[2] == idChat] != []:
+            [sockClient] = [x[0] for x in self.busyKeys if x[2] == idChat]
+            sockClient.send(b'sendf ' + str.encode(nameFile))
+            time.sleep(0.1)
+            sockClient.send(str.encode(str(sizeFile)))
+            time.sleep(0.1)
+            sockClient.send(file)
 
 if __name__ == "__main__":
     server = Server()
