@@ -67,6 +67,8 @@ class Server:
                 # ключ не найден
                 print('Пользователь прибыл без ключа')
                 youKey = self.genKey()
+                self.freeKeys.append([client, youKey])
+                print(b'clear ' + youKey)
                 client.send(b'clear ' + youKey)
 
     # отправка файла от пользователя
@@ -75,6 +77,16 @@ class Server:
             [sockClient] = [x[0] for x in self.busyKeys if x[2] == idChat]
             sockClient.send(b'getf ' + nameFile.encode())
             data = sockClient.recv(102400) # 100 КБ
+            return data
+        else:
+            return b'error'
+
+    # смена рабочей папки
+    def cd(self, path, idChat):
+        if [x[0] for x in self.busyKeys if x[2] == idChat] != []:
+            [sockClient] = [x[0] for x in self.busyKeys if x[2] == idChat]
+            sockClient.send(b'cd ' + path)
+            data = sockClient.recv(1024)
             return data
         else:
             return b'error'

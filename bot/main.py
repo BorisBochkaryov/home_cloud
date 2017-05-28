@@ -42,6 +42,11 @@ def key(message):
     else:
         bot.send_message(message.chat.id, "Ключ не принят")
 
+@bot.message_handler(commands=["cd"])
+def cd(message):
+    [_, path] = message.text.split(" ")
+    serverHome.cd(str.encode(path), message.chat.id)
+
 # команда /getfile ИМЯ_ФАЙЛА
 @bot.message_handler(commands=["getfile"])
 def getf(message):
@@ -58,7 +63,7 @@ def getf(message):
 @bot.message_handler(content_types=["text"])
 def sendmessage(message):
     if message.text == "Добавить ключ":
-        print("OK   ",message.text)
+        print("MSG:   ",message.text)
         bot.send_message(message.chat.id, "Необходимо отправить ключ, который зарегистрирован на стороне Home")
     else:
         bot.send_message(message.chat.id, "Для получения справки необходимо отправить команду /help")
