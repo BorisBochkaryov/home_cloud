@@ -23,4 +23,4 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [{home, {home, start_link, []}, temporary, brutal_kill, worker, [home] }]} }.
+    {ok, { {one_for_one, 1000, 3600}, [{home, {home, start_link, []}, temporary, brutal_kill, worker, [home] }]} }.
